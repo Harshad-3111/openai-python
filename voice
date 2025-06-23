@@ -1,0 +1,80 @@
+import speech_recognition as sr
+import pyttsx3
+import openai
+
+# OPTIONAL: Add your OpenAI API key here if you want GPT responses
+USE_GPT = True
+openai.api_key = "YOUR_OPENAI_API_KEY"
+
+# Initialize text-to-speech engine
+engine = pyttsx3.init()
+engine.setProperty('rate', 170)  # Words per minute
+engine.setProperty('volume', 1)  # Max volume
+
+def speak(text):
+    """Speak the given text"""
+    print(f"Assistant: {text}")
+    engine.say(text)
+    engine.runAndWait()
+
+def listen():
+    """Listen to user's voice and convert it to text"""
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("Listening...")
+        recognizer.pause_threshold = 1
+        audio = recognizer.listen(source, timeout=5, phrase_time_limit=8)
+    try:
+        print("Recognizing...")
+        query = recognizer.recognize_google(audio, language='en-IN')
+        print(f"You: {query}")
+        return query.lower()
+    except sr.UnknownValueError:
+        speak("Sorry, I didn't catch that.")
+    except sr.RequestError:
+        speak("Speech service is unavailable.")
+    return ""
+
+def gpt_reply(prompt):
+    """Get a response from GPT"""
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=150,
+            temperature=0.7,
+        )
+        return response['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        return f"Error: {e}"
+
+def basic_response(query):
+    """Basic hardcoded responses"""
+    if "your name" in query:
+        return "I am your personal voice assistant."
+    elif "time" in query:
+        from datetime import datetime
+        return f"The current time is {datetime.now().strftime('%I:%M %p')}"
+    elif "exit" in query or "stop" in query:
+        return "Goodbye!"
+    else:
+        return "Sorry, I can’t answer that without GPT enabled."
+
+def main():
+    speak("Hello! I am your AI voice assistant. Say something.")
+    while True:
+        query = listen()
+        if not query:
+            continue
+        if "exit" in query or "stop" in query:
+            speak("Goodbye!")
+            break
+        if USE_GPT:
+            answer = gpt_reply(query)
+        else:
+            answer = basic_response(query)
+        speak(answer)
+
+if __name__ == "__main__":
+    main()
+
